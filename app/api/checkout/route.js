@@ -1,27 +1,35 @@
-import { requireAuth } from "@/lib/authMiddleware";
 import { dbConnect } from "@/lib/dbConnect";
-import Order from "@/models/Order";
 import Cart from "@/models/Cart";
+import Order from "@/models/Order";
+import { NextResponse } from "next/server";
 
 export async function POST(req) {
-  const session = await requireAuth(req);
-  if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    await dbConnect();
+    const { userId } = await req.json();
 
-  await dbConnect();
-  const cart = await Cart.findOne({ userId: session.user.id }).populate("items.productId");
-  if (!cart || cart.items.length === 0) {
-    return Response.json({ error: "Cart is empty" }, { status: 400 });
+    if (!userId) {
+      return NextResponse.json({ error: "User ID is required" }, { status: 400 });
+    }
+
+    const cart = await Cart.findOne({ userId }).populate("items.productId");
+
+    if (!cart || cart.items.length === 0) {
+      return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
+    }
+
+    const totalAmount = cart.items.reduce(
+      (acc, item) => acc + item.quantity * item.productId.price,
+      0
+    );
+
+    const order = await Order.create({ userId, items: cart.items, totalAmount, status: "pending" });
+
+    cart.items = [];
+    await cart.save();
+
+    return NextResponse.json({ success: true, order });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to place order" }, { status: 500 });
   }
-
-  // Simulate payment success
-  const order = await Order.create({
-    userId: session.user.id,
-    items: cart.items,
-    totalAmount: cart.items.reduce((acc, item) => acc + item.productId.price * item.quantity, 0),
-    status: "Processing",
-  });
-
-  await Cart.deleteOne({ userId: session.user.id });
-
-  return Response.json({ success: true, order });
 }
