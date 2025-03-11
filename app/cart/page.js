@@ -1,4 +1,4 @@
-"use client"; // Ensure this is at the very top!
+"use client"; // Ensure this is at the top
 
 import { useEffect, useState } from "react";
 import axios from "axios";
@@ -6,14 +6,19 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 export default function CartPage() {
-  const session = useSession(); // Don't destructure here yet!
+  const session = useSession(); // Don't destructure yet
   const router = useRouter();
   const [cart, setCart] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Ensure useSession is defined before accessing it
+  if (typeof window === "undefined") {
+    return null; // Prevents execution during server-side rendering
+  }
+
   useEffect(() => {
-    if (session.status === "authenticated" && session.data?.user) {
+    if (session?.status === "authenticated" && session.data?.user) {
       fetchCart();
     }
   }, [session]);
