@@ -1,6 +1,6 @@
 "use client"; // Ensure this is at the top
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -12,18 +12,10 @@ export default function CartPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Ensure useSession is defined before accessing it
-  if (typeof window === "undefined") {
-    return null; // Prevents execution during server-side rendering
-  }
+  // Define fetchCart using useCallback to prevent unnecessary re-renders
+  const fetchCart = useCallback(async () => {
+    if (!session.data?.user?.id) return;
 
-  useEffect(() => {
-    if (session?.status === "authenticated" && session.data?.user) {
-      fetchCart();
-    }
-  }, [session]);
-
-  const fetchCart = async () => {
     try {
       const res = await axios.get(`/api/cart?userId=${session.data.user.id}`);
       setCart(res.data.cart);
@@ -32,7 +24,13 @@ export default function CartPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [session.data?.user?.id]); // Depend only on session.data.user.id
+
+  useEffect(() => {
+    if (session.status === "authenticated") {
+      fetchCart();
+    }
+  }, [session.status, fetchCart]); // Include fetchCart as a dependency
 
   const removeFromCart = async (productId) => {
     try {
