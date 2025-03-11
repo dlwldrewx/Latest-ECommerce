@@ -6,63 +6,34 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 export default function CartPage() {
-  const session = useSession(); // Don't destructure yet
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [cart, setCart] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Define fetchCart using useCallback to prevent unnecessary re-renders
+  // Ensure that session exists before calling fetchCart
   const fetchCart = useCallback(async () => {
-    if (!session.data?.user?.id) return;
+    if (!session?.user?.id) return; // Ensure session is available
 
     try {
-      const res = await axios.get(`/api/cart?userId=${session.data.user.id}`);
+      const res = await axios.get(`/api/cart?userId=${session.user.id}`);
       setCart(res.data.cart);
     } catch (err) {
       setError("Failed to load cart");
     } finally {
       setLoading(false);
     }
-  }, [session.data?.user?.id]); // Depend only on session.data.user.id
+  }, [session?.user?.id]);
 
   useEffect(() => {
-    if (session.status === "authenticated") {
+    if (status === "authenticated") {
       fetchCart();
     }
-  }, [session.status, fetchCart]); // Include fetchCart as a dependency
+  }, [status, fetchCart]);
 
-  const removeFromCart = async (productId) => {
-    try {
-      await axios.delete("/api/cart", { data: { userId: session.data.user.id, productId } });
-      fetchCart();
-    } catch (err) {
-      setError("Failed to remove item");
-    }
-  };
-
-  const clearCart = async () => {
-    try {
-      await axios.put("/api/cart", { userId: session.data.user.id });
-      fetchCart();
-    } catch (err) {
-      setError("Failed to clear cart");
-    }
-  };
-
-  const handleCheckout = async () => {
-    try {
-      const res = await axios.post("/api/checkout", { userId: session.data.user.id });
-      if (res.status === 200) {
-        router.push("/orders");
-      }
-    } catch (err) {
-      setError("Checkout failed");
-    }
-  };
-
-  if (session.status === "loading") return <p>Loading...</p>;
-  if (session.status === "unauthenticated") return <p className="text-red-500">Please log in to view your cart.</p>;
+  if (status === "loading") return <p>Loading...</p>;
+  if (status === "unauthenticated") return <p className="text-red-500">Please log in to view your cart.</p>;
   if (loading) return <p>Loading cart...</p>;
   if (error) return <p className="text-red-500">{error}</p>;
 
