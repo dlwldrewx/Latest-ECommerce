@@ -5,17 +5,17 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 export default function CartPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [cart, setCart] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (session?.user) {
+    if (status === "authenticated" && session?.user) {
       fetchCart();
     }
-  }, [session]);
+  }, [session, status]);
 
   const fetchCart = async () => {
     try {
@@ -57,7 +57,9 @@ export default function CartPage() {
     }
   };
 
-  if (loading) return <p>Loading...</p>;
+  if (status === "loading") return <p>Loading...</p>;
+  if (!session) return <p className="text-red-500">Please log in to view your cart.</p>;
+  if (loading) return <p>Loading cart...</p>;
   if (error) return <p className="text-red-500">{error}</p>;
 
   return (
@@ -68,7 +70,9 @@ export default function CartPage() {
           {cart.items.map((item) => (
             <div key={item.productId._id} className="flex justify-between border-b p-2">
               <p>{item.productId.name} (x{item.quantity})</p>
-              <button onClick={() => removeFromCart(item.productId._id)} className="text-red-500">Remove</button>
+              <button onClick={() => removeFromCart(item.productId._id)} className="text-red-500">
+                Remove
+              </button>
             </div>
           ))}
           <div className="flex justify-between mt-4">
