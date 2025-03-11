@@ -1,25 +1,26 @@
-"use client";
+"use client"; // Ensure this is at the very top!
+
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 export default function CartPage() {
-  const { data: session, status } = useSession();
+  const session = useSession(); // Don't destructure here yet!
   const router = useRouter();
   const [cart, setCart] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (status === "authenticated" && session?.user) {
+    if (session.status === "authenticated" && session.data?.user) {
       fetchCart();
     }
-  }, [session, status]);
+  }, [session]);
 
   const fetchCart = async () => {
     try {
-      const res = await axios.get(`/api/cart?userId=${session.user.id}`);
+      const res = await axios.get(`/api/cart?userId=${session.data.user.id}`);
       setCart(res.data.cart);
     } catch (err) {
       setError("Failed to load cart");
@@ -30,7 +31,7 @@ export default function CartPage() {
 
   const removeFromCart = async (productId) => {
     try {
-      await axios.delete("/api/cart", { data: { userId: session.user.id, productId } });
+      await axios.delete("/api/cart", { data: { userId: session.data.user.id, productId } });
       fetchCart();
     } catch (err) {
       setError("Failed to remove item");
@@ -39,7 +40,7 @@ export default function CartPage() {
 
   const clearCart = async () => {
     try {
-      await axios.put("/api/cart", { userId: session.user.id });
+      await axios.put("/api/cart", { userId: session.data.user.id });
       fetchCart();
     } catch (err) {
       setError("Failed to clear cart");
@@ -48,7 +49,7 @@ export default function CartPage() {
 
   const handleCheckout = async () => {
     try {
-      const res = await axios.post("/api/checkout", { userId: session.user.id });
+      const res = await axios.post("/api/checkout", { userId: session.data.user.id });
       if (res.status === 200) {
         router.push("/orders");
       }
@@ -57,8 +58,8 @@ export default function CartPage() {
     }
   };
 
-  if (status === "loading") return <p>Loading...</p>;
-  if (!session) return <p className="text-red-500">Please log in to view your cart.</p>;
+  if (session.status === "loading") return <p>Loading...</p>;
+  if (session.status === "unauthenticated") return <p className="text-red-500">Please log in to view your cart.</p>;
   if (loading) return <p>Loading cart...</p>;
   if (error) return <p className="text-red-500">{error}</p>;
 
