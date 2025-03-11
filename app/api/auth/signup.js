@@ -1,18 +1,27 @@
-import dbConnect from "../../../lib/dbConnect";
-import User from "../../../models/User";
+import { dbConnect } from "@/lib/dbConnect";
+import User from "@/models/User";
 import bcrypt from "bcryptjs";
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).end();
+export async function POST(req) {
+  try {
+    const { name, email, password } = await req.json();
 
-  await dbConnect();
-  const { name, email, password } = req.body;
+    if (!name || !email || !password) {
+      return Response.json({ error: "All fields are required" }, { status: 400 });
+    }
 
-  const existingUser = await User.findOne({ email });
-  if (existingUser) return res.status(400).json({ error: "User already exists" });
+    await dbConnect();
+    const existingUser = await User.findOne({ email });
 
-  const hashedPassword = await bcrypt.hash(password, 10);
-  const newUser = await User.create({ name, email, password: hashedPassword });
+    if (existingUser) {
+      return Response.json({ error: "User already exists" }, { status: 400 });
+    }
 
-  res.status(201).json(newUser);
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = await User.create({ name, email, password: hashedPassword });
+
+    return Response.json({ message: "User created successfully" }, { status: 201 });
+  } catch (error) {
+    return Response.json({ error: "Something went wrong" }, { status: 500 });
+  }
 }
